@@ -291,6 +291,18 @@ This project was developed as a practical implementation of **ASP.NET Core Clean
 
 It focuses on demonstrating architectural design, database integration, command/query separation, input validation, and RESTful API development.
 
+---
+
+## Author
+
+**Mohamed Gamal**
+
+Machine Learning & Deep Learning Engineer
+
+GitHub: https://github.com/mogamal1111
+
+LinkedIn: https://www.linkedin.com/in/mohamed-gamal-85795735b
+
 The current implementation includes product creation and retrieval operations.
 
 ---
