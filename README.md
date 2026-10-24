@@ -1,139 +1,298 @@
-# Products API — Clean Architecture + CQRS (ASP.NET Core)
+# Products API | Clean Architecture & CQRS
 
-A complete implementation of the **Task on page 15** of `ASP.NET_Core_Architecture.pdf`.
+A RESTful Web API built with **ASP.NET Core 10**, following **Clean Architecture** principles and the **CQRS pattern** using MediatR.
 
-## Checklist
+The project demonstrates how to design a maintainable and well-structured backend application by separating business logic, application operations, data access, and API responsibilities.
 
-- [x] Product entity with `Id`, `Name`, and `Price`
-- [x] `GET /api/products` (read all products)
-- [x] `GET /api/products/{id}` (read by ID)
-- [x] `POST /api/products` (create product)
-- [x] 4 independent projects: `Domain`, `Application`, `Infrastructure`, `API`
-- [x] `CQRS` with three requests/handlers and MediatR
-- [x] `EF Core` using SQL Server
-- [x] DTOs, Data Annotations / `IValidatableObject` validation
-- [x] Dependency Injection and clean dependency directions
+## Technologies Used
 
-## Architecture
+- **ASP.NET Core 10** — RESTful Web API
+- **C# / .NET 10** — Application development
+- **Entity Framework Core** — Object-Relational Mapping
+- **SQL Server** — Relational database
+- **MediatR** — CQRS request handling
+- **Dependency Injection** — Dependency management
+- **Data Annotations** — Input validation
+- **LINQ** — Database queries
 
-```text
-Products.API  ------->  Products.Application  -------> Products.Domain
-     |                         ^
-     +---> Products.Infrastructure --+----------------> Products.Domain
-```
+---
 
-- **Domain**: `Product` entity and its invariants. Does not reference external layers.
-- **Application**: CQRS commands, queries, handlers, `ProductDto`, `IProductRepository`.
-- **Infrastructure**: EF Core `ProductsDbContext`, SQL Server, `ProductRepository` implementation.
-- **API**: HTTP controller, input DTO validation, startup + dependency registration.
-- **Runtime flow**: HTTP -> Controller -> ISender -> MediatR Handler -> Repository -> EF Core -> SQL Server.
+## Architecture Overview
 
-## Requirements
+The solution follows Clean Architecture and is divided into four independent projects, each with a clearly defined responsibility.
 
-- .NET **10 SDK** (project targets `net10.0`)
-- Microsoft SQL Server (Windows **SQL Server LocalDB** is the default connection)
-- Internet access for the first `dotnet restore` to download NuGet packages.
-
-## Run on Windows with Visual Studio Code
-
-1. Extract the ZIP and open the **ProductsCleanArchitecture** folder in VS Code (`File > Open Folder`).
-2. Open `Products.API/appsettings.json`. Default connection string:
-
-   ```text
-   Server=(localdb)\MSSQLLocalDB;Database=ProductsCleanArchitectureDb;Trusted_Connection=True;TrustServerCertificate=True;
-   ```
-
-3. If you use LocalDB, verify it is installed with PowerShell:
-
-   ```powershell
-   sqllocaldb info
-   ```
-
-   If LocalDB is unavailable, install SQL Server Express LocalDB or edit the connection string for your SQL Server instance (examples below).
-4. From the **solution root** in VS Code Terminal:
-
-   ```powershell
-   dotnet restore
-   dotnet run --project Products.API --launch-profile http
-   ```
-
-5. API listens on `http://localhost:5067`. In Development, **EF Core automatically creates the database and Products table** using `EnsureCreatedAsync` the first time the app starts.
-
-## Test the API (PowerShell)
-
-```powershell
-# Add product: should return 201 Created, with Id
-Invoke-RestMethod -Method Post -Uri http://localhost:5067/api/products -ContentType 'application/json' -Body '{"name":"Keyboard","price":199.99}'
-
-# Read all products
-Invoke-RestMethod http://localhost:5067/api/products
-
-# Read one product
-Invoke-RestMethod http://localhost:5067/api/products/1
-```
-
-Alternatively, open `Products.API/Products.API.http` with the VS Code **REST Client** extension (or copy its requests to Postman).
-
-| Request | Expected result |
+| Layer | Responsibility |
 |---|---|
-| `GET /api/products` | `200 OK`, JSON array |
-| `GET /api/products/1` | `200 OK` + product, or `404 Not Found` |
-| `POST /api/products` valid JSON | `201 Created`, new product and `Location` header |
-| `POST /api/products` invalid name/price | `400 Bad Request`, validation errors |
+| **Domain** | Core entities and business rules |
+| **Application** | CQRS commands, queries, handlers, DTOs, and interfaces |
+| **Infrastructure** | Database access, EF Core, and repository implementation |
+| **API** | HTTP endpoints, request validation, and application configuration |
 
-Example `POST` JSON:
+### Request Flow
+
+An incoming HTTP request is processed through the following components:
+
+**Controller → MediatR → Command/Query Handler → Repository → EF Core → SQL Server**
+
+The controller handles the HTTP request, while MediatR dispatches the corresponding command or query to its handler.
+
+Business logic and data access remain separated from the API layer.
+
+---
+
+## CQRS Implementation
+
+The project applies **Command Query Responsibility Segregation (CQRS)** to separate operations that modify data from operations that retrieve data.
+
+### Commands
+
+**CreateProductCommand**
+
+Creates a new product, validates its business rules, and saves it to the database.
+
+Handled by `CreateProductHandler`.
+
+### Queries
+
+**GetProductsQuery**
+
+Retrieves all products from the database.
+
+Handled by `GetProductsHandler`.
+
+**GetProductByIdQuery**
+
+Retrieves a single product using its unique identifier.
+
+Handled by `GetProductByIdHandler`.
+
+MediatR connects each request to its corresponding handler, keeping controllers focused on HTTP responsibilities.
+
+---
+
+## API Endpoints
+
+The application provides three RESTful endpoints.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/products` | Retrieve all products |
+| `GET` | `/api/products/{id}` | Retrieve a product by ID |
+| `POST` | `/api/products` | Create a new product |
+
+### Create Product
+
+**POST** `/api/products`
+
+Request Body:
 
 ```json
 {
-  "name": "Laptop",
-  "price": 27500.00
+  "name": "Keyboard",
+  "price": 199.99
 }
 ```
 
-## SQL Server connection examples
+Successful Response — `201 Created`:
 
-`Products.API/appsettings.json` uses Windows LocalDB by default. If you already have SQL Server Express on your computer, you might use:
-
-```text
-Server=.\SQLEXPRESS;Database=ProductsCleanArchitectureDb;Trusted_Connection=True;TrustServerCertificate=True;
+```json
+{
+  "id": 1,
+  "name": "Keyboard",
+  "price": 199.99
+}
 ```
 
-Or for a server configured with SQL Server Authentication:
+### Get All Products
 
-```text
-Server=localhost,1433;Database=ProductsCleanArchitectureDb;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True;
+**GET** `/api/products`
+
+Example Response — `200 OK`:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Keyboard",
+    "price": 199.99
+  }
+]
 ```
 
-**Don't commit passwords.** Override the connection using user secrets, environment variables, or another secure configuration source instead of putting a real password in `appsettings.json`:
+### Get Product By ID
+
+**GET** `/api/products/1`
+
+Returns the requested product or `404 Not Found` if the product does not exist.
+
+---
+
+## Validation & Error Handling
+
+The API implements input validation and centralized exception handling.
+
+Validation rules include:
+
+- Product name is required.
+- Product name must contain between 2 and 100 characters.
+- Product price must be between `0.01` and `999999999.99`.
+- Product IDs must be positive integers.
+
+The application uses appropriate HTTP status codes:
+
+| Status Code | Meaning |
+|---|---|
+| `200 OK` | Request completed successfully |
+| `201 Created` | Product created successfully |
+| `400 Bad Request` | Invalid request data |
+| `404 Not Found` | Requested product does not exist |
+| `500 Internal Server Error` | Unexpected server error |
+
+The Domain layer also enforces business rules independently of HTTP request validation.
+
+---
+
+## Database & Data Access
+
+The project uses **Entity Framework Core with SQL Server**.
+
+Data access is implemented through the Repository Pattern.
+
+`IProductRepository` defines the data access contract within the Application layer, while `ProductRepository` provides its implementation in the Infrastructure layer.
+
+Read operations use:
+
+- `AsNoTracking()` for efficient read-only queries.
+- `Select()` to project entities into DTOs.
+- Asynchronous methods for database operations.
+
+During development, the database and Products table are automatically initialized using `EnsureCreatedAsync()`.
+
+This initialization is intended for the educational project. A production application should use properly managed EF Core migrations.
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+Make sure you have installed:
+
+- .NET 10 SDK
+- Visual Studio Code or Visual Studio
+- SQL Server or SQL Server Express LocalDB
+- Git (optional)
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/mogamal1111/ProductsCleanArchitecture.git
+```
+
+Navigate to the project:
+
+```bash
+cd ProductsCleanArchitecture
+```
+
+### 2. Restore Dependencies
+
+```bash
+dotnet restore
+```
+
+### 3. Configure Database Connection
+
+Open:
+
+`Products.API/appsettings.json`
+
+Configure the `DefaultConnection` connection string for your SQL Server instance.
+
+Example using SQL Server LocalDB:
+
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=ProductsCleanArchitectureDb;Trusted_Connection=True;TrustServerCertificate=True;"
+  }
+}
+```
+
+If your LocalDB instance has a different name, replace `MSSQLLocalDB` with that name.
+
+Do not commit database credentials or other secrets to Git.
+
+### 4. Build the Solution
+
+```bash
+dotnet build
+```
+
+### 5. Run the Application
+
+```bash
+dotnet run --project Products.API --launch-profile http
+```
+
+The application starts at:
+
+**http://localhost:5067**
+
+### 6. Test the API
+
+Open the following URL in your browser:
+
+`http://localhost:5067/api/products`
+
+You can also test the endpoints using Postman, PowerShell, or the included `Products.API.http` file.
+
+Example PowerShell request:
 
 ```powershell
-cd Products.API
-dotnet user-secrets init
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Server=localhost,1433;Database=ProductsCleanArchitectureDb;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True;"
-cd ..
+Invoke-RestMethod `
+  -Uri "http://localhost:5067/api/products" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"name":"Keyboard","price":199.99}'
 ```
 
-## CQRS implementation
+---
 
-- **Query** `GetProductsQuery` -> `GetProductsHandler` -> list projected as DTOs (`AsNoTracking`).
-- **Query** `GetProductByIdQuery` -> `GetProductByIdHandler` -> matching product DTO or null.
-- **Command** `CreateProductCommand` -> `CreateProductHandler` -> creates Domain entity and saves it -> returns product DTO.
+## Design Principles
 
-All three handlers depend only on `IProductRepository`, not on EF Core.
+This project demonstrates several important software engineering concepts:
 
-## Validation
+**Separation of Concerns**
 
-- HTTP request body: `CreateProductRequest` uses `Required`, `StringLength`, `Range`, and `IValidatableObject`.
-- `[ApiController]` automatically returns `400 Bad Request` when it detects invalid model input.
-- Domain `Product` independently enforces valid name and price so other callers cannot create an invalid entity.
+Each architectural layer has a clearly defined responsibility.
 
-## Important note on EF Core migrations
+**Dependency Inversion**
 
-For this **training exercise** `EnsureCreatedAsync()` automatically initializes a fresh SQL Server database in Development; therefore you don't need a separate EF migration command to complete the assignment. **Do not mix `EnsureCreated` with `Database.Migrate` / EF migrations against the same database.** If this becomes a production project, replace the demo initialization with versioned EF Core migrations and start from a database created through migrations.
+Application logic depends on abstractions rather than database-specific implementations.
 
-## Technologies
+**CQRS**
 
-- .NET 10 / ASP.NET Core Web API
-- MediatR 12.4.1
-- EF Core SQL Server 10.0.0
-- DataAnnotations and model validation
+Commands and queries are handled independently, improving code organization.
+
+**Dependency Injection**
+
+Application services and repositories are registered through the built-in .NET dependency injection container.
+
+**Maintainability**
+
+The modular structure makes the application easier to understand, extend, and maintain.
+
+---
+
+## Project Scope
+
+This project was developed as a practical implementation of **ASP.NET Core Clean Architecture and CQRS concepts**.
+
+It focuses on demonstrating architectural design, database integration, command/query separation, input validation, and RESTful API development.
+
+The current implementation includes product creation and retrieval operations.
+
+---
+
+**Built with ASP.NET Core, Clean Architecture, CQRS, MediatR, and Entity Framework Core.**
