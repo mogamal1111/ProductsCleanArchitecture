@@ -1,0 +1,34 @@
+@baseUrl = http://localhost:5067
+
+### Create product (201 Created + Location header)
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Keyboard",
+  "price": 199.99
+}
+
+### Create another product
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": "Mouse",
+  "price": 89.50
+}
+
+### List products (200 OK)
+GET {{baseUrl}}/api/products
+
+### Find product by ID (200 OK or 404 Not Found)
+GET {{baseUrl}}/api/products/1
+
+### Validation test (400 Bad Request with field errors)
+POST {{baseUrl}}/api/products
+Content-Type: application/json
+
+{
+  "name": " ",
+  "price": -5
+}
